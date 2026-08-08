@@ -3,14 +3,16 @@ let releaseData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loadReleasesBtn').addEventListener('click', fetchReleases);
+  document.getElementById('hasTheaterDate').addEventListener('change', renderList);
   document.getElementById('releasedTheaters').addEventListener('change', renderList);
+  document.getElementById('hasDigitalDate').addEventListener('change', renderList);
   document.getElementById('releasedDigital').addEventListener('change', renderList);
   document.getElementById('sortOrder').addEventListener('change', renderList);
 });
 
 async function fetchReleases() {
   const username = localStorage.getItem('lboxd_username');
-  if (!username) return alert('Primero carga una watchlist en la pagina principal');
+  if (!username) return alert('Primero carga una watchlist en la página principal');
 
   const savedData = localStorage.getItem(`watchlist_data_${username}`);
   if (!savedData) return alert('No hay datos guardados de la watchlist');
@@ -18,48 +20,72 @@ async function fetchReleases() {
   const movies = JSON.parse(savedData);
   document.getElementById('statusMessage').innerText = 'Obteniendo fechas de estreno...';
 
-  releaseData = [];
   const today = new Date().toISOString().split('T')[0];
+  const uniqueMoviesMap = new Map();
 
-  for (const m of movies) {
-    const res = await fetch(`/api/tmdb?endpoint=release_dates&tmdb_id=${m.tmdb_id}`);
-    const data = await res.json();
+  // Procesamiento concurrente en bloques de 15 peticiones
+  const chunkSize = 15;
+  for (let i = 0; i < movies.length; i += chunkSize) {
+    const chunk = movies.slice(i, i + chunkSize);
+    document.getElementById('statusMessage').innerText = `Procesando fechas (${i + 1} de ${movies.length})...`;
 
-    let theaterDate = null;
-    let digitalDate = null;
+    await Promise.all(
+      chunk.map(async (m) => {
+        if (uniqueMoviesMap.has(m.tmdb_id)) return;
 
-    if (data.results) {
-      data.results.forEach(country => {
-        // Cines solo en AR (Type 3)
-        if (country.iso_3166_1 === 'AR') {
-          country.release_dates.forEach(rd => {
-            if (rd.type === 3) {
-              const dateStr = rd.release_date.split('T')[0];
-              if (!theaterDate || dateStr < theaterDate) theaterDate = dateStr;
-            }
-          });
-        }
+        try {
+          const res = await fetch(`/api/tmdb?endpoint=release_dates&tmdb_id=${m.tmdb_id}`);
+          if (!res.ok) return;
 
-        // Digital en cualquier ISO (Types 4, 5, 6)
-        country.release_dates.forEach(rd => {
-          if ([4, 5, 6].includes(rd.type)) {
-            const dateStr = rd.release_date.split('T')[0];
-            if (!digitalDate || dateStr < digitalDate) digitalDate = dateStr;
+          const data = await res.json();
+          let earliestTheater = null;
+          let earliestDigital = null;
+
+          if (data.results) {
+            data.results.forEach(country => {
+              // Estrenos en Cine (AR, tipo 3)
+              if (country.iso_3166_1 === 'AR') {
+                country.release_dates.forEach(rd => {
+                  if (rd.type === 3 && rd.release_date) {
+                    const dateStr = rd.release_date.split('T')[0];
+                    if (!earliestTheater || dateStr < earliestTheater) {
+                      earliestTheater = dateStr;
+                    }
+                  }
+                });
+              }
+
+              // Estrenos en Digital (todos los países, tipos 4, 5, 6)
+              country.release_dates.forEach(rd => {
+                if ([4, 5, 6].includes(rd.type) && rd.release_date) {
+                  const dateStr = rd.release_date.split('T')[0];
+                  if (!earliestDigital || dateStr < earliestDigital) {
+                    earliestDigital = dateStr;
+                  }
+                }
+              });
+            });
           }
-        });
-      });
-    }
 
-    releaseData.push({
-      title: m.title,
-      poster_path: m.poster_path,
-      theaterDate: theaterDate,
-      digitalDate: digitalDate,
-      isReleasedTheater: theaterDate && theaterDate <= today,
-      isReleasedDigital: digitalDate && digitalDate <= today
-    });
+          uniqueMoviesMap.set(m.tmdb_id, {
+            tmdb_id: m.tmdb_id,
+            title: m.title,
+            poster_path: m.poster_path,
+            theaterDate: earliestTheater,
+            digitalDate: earliestDigital,
+            hasTheater: Boolean(earliestTheater),
+            hasDigital: Boolean(earliestDigital),
+            isReleasedTheater: Boolean(earliestTheater && earliestTheater <= today),
+            isReleasedDigital: Boolean(earliestDigital && earliestDigital <= today)
+          });
+        } catch (e) {
+          // Continuar con el siguiente elemento en caso de fallo puntual
+        }
+      })
+    );
   }
 
+  releaseData = Array.from(uniqueMoviesMap.values());
   document.getElementById('statusMessage').innerText = '';
   renderList();
 }
@@ -68,13 +94,17 @@ function renderList() {
   const container = document.getElementById('releasesList');
   container.innerHTML = '';
 
-  const filterTheater = document.getElementById('releasedTheaters').checked;
-  const filterDigital = document.getElementById('releasedDigital').checked;
+  const filterHasTheater = document.getElementById('hasTheaterDate').checked;
+  const filterIsReleasedTheater = document.getElementById('releasedTheaters').checked;
+  const filterHasDigital = document.getElementById('hasDigitalDate').checked;
+  const filterIsReleasedDigital = document.getElementById('releasedDigital').checked;
   const sortOrder = document.getElementById('sortOrder').value;
 
   let filtered = releaseData.filter(m => {
-    if (filterTheater && !m.isReleasedTheater) return false;
-    if (filterDigital && !m.isReleasedDigital) return false;
+    if (filterHasTheater && !m.hasTheater) return false;
+    if (filterIsReleasedTheater && !m.isReleasedTheater) return false;
+    if (filterHasDigital && !m.hasDigital) return false;
+    if (filterIsReleasedDigital && !m.isReleasedDigital) return false;
     return true;
   });
 
@@ -97,8 +127,8 @@ function renderList() {
       <img class="poster" src="${TMDB_IMAGE_BASE}${m.poster_path}" alt="${m.title}">
       <div class="movie-info">
         <h4>${m.title}</h4>
-        <p><small>Cine AR: ${m.theaterDate || 'Sin fecha'}</small></p>
-        <p><small>Digital: ${m.digitalDate || 'Sin fecha'}</small></p>
+        <p>Cine: ${m.theaterDate || 'Sin fecha'}</p>
+        <p>Digital: ${m.digitalDate || 'Sin fecha'}</p>
       </div>
     `;
     container.appendChild(card);

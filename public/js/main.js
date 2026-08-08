@@ -56,20 +56,21 @@ async function processWatchlist(forceRefresh) {
     if (!resWl.ok) throw new Error(`Error en watchlist (${resWl.status})`);
     
     const wlData = await resWl.json();
-    const slugs = wlData.watchlist || [];
+    const rawSlugs = wlData.watchlist || [];
+
+    // Desduplicar slugs obtenidos
+    const slugs = [...new Set(rawSlugs)];
 
     if (slugs.length === 0) {
-      updateStatus('La watchlist esta vacia o el usuario no existe.');
+      updateStatus('La watchlist está vacía o el usuario no existe.');
       return;
     }
 
-    // Identificar slugs faltantes en cache local del navegador
     const localMappings = getLocalMappings();
     const missingSlugs = slugs.filter(slug => !localMappings[slug]);
 
-    // Resolver slugs faltantes en lotes de 5 para evitar timeout en Vercel
     if (missingSlugs.length > 0) {
-      const batchSize = 5;
+      const batchSize = 10;
       for (let i = 0; i < missingSlugs.length; i += batchSize) {
         const batch = missingSlugs.slice(i, i + batchSize);
         updateStatus(`Mapeando TMDB IDs (${i + 1} de ${missingSlugs.length})...`);
@@ -86,24 +87,24 @@ async function processWatchlist(forceRefresh) {
         const batchResults = {};
 
         (mapData.mapping || []).forEach(item => {
-          batchResults[item.lboxd_query] = item.tmdb_id;
+          const key = item.lboxd_query || item.film_query;
+          if (key) batchResults[key] = item.tmdb_id;
         });
 
         saveLocalMappings(batchResults);
       }
     }
 
-    // Obtener los datos mapeados actualizados
     const updatedMappings = getLocalMappings();
     const mappedItems = slugs
       .filter(slug => updatedMappings[slug])
       .map(slug => ({ lboxd_query: slug, tmdb_id: updatedMappings[slug] }));
 
     updateStatus('Cargando detalles de TMDB y streaming...');
-    moviesData = [];
+    
+    const fetchedMoviesMap = new Map();
+    const tmdbBatchSize = 10;
 
-    // Cargar detalles de TMDB en tandas de 5 en paralelo
-    const tmdbBatchSize = 5;
     for (let i = 0; i < mappedItems.length; i += tmdbBatchSize) {
       const chunk = mappedItems.slice(i, i + tmdbBatchSize);
       updateStatus(`Cargando TMDB info (${i + 1} de ${mappedItems.length})...`);
@@ -142,10 +143,13 @@ async function processWatchlist(forceRefresh) {
       );
 
       chunkResults.forEach(res => {
-        if (res) moviesData.push(res);
+        if (res && !fetchedMoviesMap.has(res.tmdb_id)) {
+          fetchedMoviesMap.set(res.tmdb_id, res);
+        }
       });
     }
 
+    moviesData = Array.from(fetchedMoviesMap.values());
     localStorage.setItem(cacheKey, JSON.stringify(moviesData));
     updateStatus('');
     renderProvidersFilter();
@@ -176,7 +180,10 @@ function renderProvidersFilter() {
   providersMap.forEach((p) => {
     const btn = document.createElement('button');
     btn.className = 'provider-btn';
-    btn.innerHTML = `<img src="${TMDB_IMAGE_BASE}${p.logo_path}" alt="${p.provider_name}"> ${p.provider_name}`;
+    btn.title = p.provider_name;
+    btn.setAttribute('aria-label', p.provider_name);
+    btn.innerHTML = `<img src="${TMDB_IMAGE_BASE}${p.logo_path}" alt="${p.provider_name}">`;
+    
     btn.addEventListener('click', () => {
       if (selectedProviders.includes(p.provider_id)) {
         selectedProviders = selectedProviders.filter(id => id !== p.provider_id);
@@ -204,7 +211,7 @@ function renderMovies() {
       card.className = 'movie-card';
 
       let providersHtml = m.providers.map(p => 
-        `<img src="${TMDB_IMAGE_BASE}${p.logo_path}" title="${p.provider_name}">`
+        `<img src="${TMDB_IMAGE_BASE}${p.logo_path}" title="${p.provider_name}" alt="${p.provider_name}">`
       ).join('');
 
       card.innerHTML = `

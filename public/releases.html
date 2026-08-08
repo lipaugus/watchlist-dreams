@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fechas de Estreno</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -10,7 +11,7 @@
     <nav>
       <a href="index.html">Watchlist</a>
       <a href="lucas.html">Diario de Lucas</a>
-      <a href="releases.html">Proximos Estrenos</a>
+      <a href="releases.html" class="active">Próximos Estrenos</a>
     </nav>
     <h1>Fechas de Estreno (Watchlist)</h1>
   </header>
@@ -18,16 +19,28 @@
   <div class="controls">
     <button id="loadReleasesBtn">Cargar Fechas de Estreno</button>
 
-    <div style="margin-top: 10px;">
-      <label><input type="checkbox" id="releasedTheaters"> Ya estrenadas en cines (AR)</label>
-      <label><input type="checkbox" id="releasedDigital"> Ya estrenadas en digital</label>
-      
+    <div class="filter-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="hasTheaterDate"> Tiene fecha en Cine
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="releasedTheaters"> Ya estrenada en Cine
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="hasDigitalDate"> Tiene fecha en Digital
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="releasedDigital"> Ya estrenada en Digital
+      </label>
+    </div>
+
+    <div class="filter-row">
       <label for="sortOrder">Ordenar por:</label>
       <select id="sortOrder">
-        <option value="theater_asc">Fecha Cine (Mas antigua a reciente)</option>
-        <option value="theater_desc">Fecha Cine (Mas reciente a antigua)</option>
-        <option value="digital_asc">Fecha Digital (Mas antigua a reciente)</option>
-        <option value="digital_desc">Fecha Digital (Mas reciente a antigua)</option>
+        <option value="theater_asc">Fecha Cine (Más antigua a reciente)</option>
+        <option value="theater_desc">Fecha Cine (Más reciente a antigua)</option>
+        <option value="digital_asc">Fecha Digital (Más antigua a reciente)</option>
+        <option value="digital_desc">Fecha Digital (Más reciente a antigua)</option>
       </select>
     </div>
   </div>

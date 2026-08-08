@@ -1,0 +1,10 @@
+{
+  "name": "letterboxd-tmdb-app",
+  "version": "1.0.0",
+  "description": "App para filtrar watchlist y diario de Letterboxd con TMDB",
+  "main": "api/watchlist.js",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "node-fetch": "^3.3.2"
+  }
+}

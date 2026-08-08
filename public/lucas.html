@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Diario de Lucas</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="index.html">Watchlist</a>
+      <a href="lucas.html">Diario de Lucas</a>
+      <a href="releases.html">Proximos Estrenos</a>
+    </nav>
+    <h1>Peliculas Vistas por Lucas</h1>
+  </header>
+
+  <div class="controls">
+    <button id="loadLucasBtn">Cargar Diario</button>
+
+    <div style="margin-top: 10px;">
+      <label>Genero:</label>
+      <select id="genreFilter"><option value="">Todos</option></select>
+
+      <label>Decada:</label>
+      <select id="decadeFilter"><option value="">Todas</option></select>
+
+      <label>Ordenar por:</label>
+      <select id="sortFilter">
+        <option value="rating_desc">Calificación de Lucas (Mayor a menor)</option>
+        <option value="tmdb_desc">Popularidad TMDB</option>
+      </select>
+    </div>
+
+    <h3>Servicios de Streaming</h3>
+    <div id="lucasStreamingFilters" class="streaming-filters"></div>
+  </div>
+
+  <div id="statusMessage"></div>
+  <div id="lucasMovieGrid" class="movie-grid"></div>
+
+  <script src="js/lucas.js"></script>
+</body>
+</html>

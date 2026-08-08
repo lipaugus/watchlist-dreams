@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Letterboxd Watchlist & Streaming</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="index.html">Watchlist</a>
+      <a href="lucas.html">Diario de Lucas</a>
+      <a href="releases.html">Proximos Estrenos</a>
+    </nav>
+    <h1>Mi Watchlist y Streaming</h1>
+  </header>
+
+  <div class="controls">
+    <label for="usernameInput">Usuario Letterboxd:</label>
+    <input type="text" id="usernameInput" placeholder="Ej: tu_usuario">
+    <button id="loadBtn">Cargar Watchlist</button>
+    <button id="refreshBtn">Forzar Actualizacion</button>
+
+    <h3>Filtrar por Servicios de Streaming (Argentina)</h3>
+    <div id="streamingFilters" class="streaming-filters"></div>
+  </div>
+
+  <div id="statusMessage"></div>
+  <div id="movieGrid" class="movie-grid"></div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

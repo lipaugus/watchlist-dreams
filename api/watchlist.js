@@ -48,8 +48,8 @@ module.exports = async (req, res) => {
       });
 
       page++;
-      // Demora de 1.2 segundos por pagina para evitar bloqueos
-      await sleep(1200);
+      // Demora reducida a 500ms por pagina
+      await sleep(500);
     }
 
     return res.status(200).json({ watchlist: lboxdQueries });

@@ -14,23 +14,23 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Lista de slugs requerida' });
   }
 
+  // Leer JSON estatico empaquetado en el despliegue
   const filePath = path.join(process.cwd(), 'data', 'lboxd_tmdb_ids.json');
-  let localCache = [];
+  let staticCache = [];
 
   if (fs.existsSync(filePath)) {
     try {
       const fileData = fs.readFileSync(filePath, 'utf8');
-      localCache = JSON.parse(fileData);
+      staticCache = JSON.parse(fileData);
     } catch (e) {
-      localCache = [];
+      staticCache = [];
     }
   }
 
   const results = [];
-  const updatedCache = [...localCache];
 
   for (const slug of slugs) {
-    const cached = updatedCache.find((item) => item.lboxd_query === slug);
+    const cached = staticCache.find((item) => item.lboxd_query === slug);
 
     if (cached) {
       results.push(cached);
@@ -55,24 +55,15 @@ module.exports = async (req, res) => {
           }
 
           if (tmdbId) {
-            const newItem = { lboxd_query: slug, tmdb_id: parseInt(tmdbId, 10) };
-            results.push(newItem);
-            updatedCache.push(newItem);
+            results.push({ lboxd_query: slug, tmdb_id: parseInt(tmdbId, 10) });
           }
         }
       } catch (err) {
-        // Ignorar fallo puntual
+        // Continuar con el siguiente slug en caso de error
       }
-      // Demora de 1.5 segundos entre scraping de peliculas
-      await sleep(1500);
+      // Pausa de 800ms entre raspados individuales
+      await sleep(800);
     }
-  }
-
-  // Intentar guardar en disco local si se ejecuta en desarrollo
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(updatedCache, null, 2));
-  } catch (e) {
-    // En entorno serverless de vercel la escritura directa en disco puede ser omitida
   }
 
   return res.status(200).json({ mapping: results });

@@ -20,7 +20,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('loadBtn').addEventListener('click', () => processWatchlist(false));
   document.getElementById('refreshBtn').addEventListener('click', () => processWatchlist(true));
+
+  // Eventos de sliders de duracion
+  const minSlider = document.getElementById('minRuntime');
+  const maxSlider = document.getElementById('maxRuntime');
+  minSlider.addEventListener('input', handleRuntimeChange);
+  maxSlider.addEventListener('input', handleRuntimeChange);
 });
+
+function handleRuntimeChange() {
+  const minSlider = document.getElementById('minRuntime');
+  const maxSlider = document.getElementById('maxRuntime');
+  
+  let minVal = parseInt(minSlider.value, 10);
+  let maxVal = parseInt(maxSlider.value, 10);
+
+  if (minVal > maxVal) {
+    minVal = maxVal;
+    minSlider.value = minVal;
+  }
+
+  const maxLabel = maxVal === 240 ? '240+ min' : `${maxVal} min`;
+  document.getElementById('runtimeDisplay').innerText = `${minVal} min - ${maxLabel}`;
+  renderMovies();
+}
 
 function getLocalMappings() {
   const cached = localStorage.getItem('lboxd_tmdb_mappings');
@@ -57,8 +80,6 @@ async function processWatchlist(forceRefresh) {
     
     const wlData = await resWl.json();
     const rawSlugs = wlData.watchlist || [];
-
-    // Desduplicar slugs obtenidos
     const slugs = [...new Set(rawSlugs)];
 
     if (slugs.length === 0) {
@@ -70,7 +91,8 @@ async function processWatchlist(forceRefresh) {
     const missingSlugs = slugs.filter(slug => !localMappings[slug]);
 
     if (missingSlugs.length > 0) {
-      const batchSize = 10;
+      // Lote reducido a 5 para optimizar red movil
+      const batchSize = 5;
       for (let i = 0; i < missingSlugs.length; i += batchSize) {
         const batch = missingSlugs.slice(i, i + batchSize);
         updateStatus(`Mapeando TMDB IDs (${i + 1} de ${missingSlugs.length})...`);
@@ -103,7 +125,8 @@ async function processWatchlist(forceRefresh) {
     updateStatus('Cargando detalles de TMDB y streaming...');
     
     const fetchedMoviesMap = new Map();
-    const tmdbBatchSize = 10;
+    // Lote de 5 concurrentes para evitar saturar conexiones moviles
+    const tmdbBatchSize = 5;
 
     for (let i = 0; i < mappedItems.length; i += tmdbBatchSize) {
       const chunk = mappedItems.slice(i, i + tmdbBatchSize);
@@ -133,6 +156,7 @@ async function processWatchlist(forceRefresh) {
               tmdb_id: item.tmdb_id,
               title: details.title,
               poster_path: details.poster_path,
+              runtime: details.runtime || 0,
               genres: details.genres || [],
               providers: arProviders
             };
@@ -202,11 +226,17 @@ function renderMovies() {
   const grid = document.getElementById('movieGrid');
   grid.innerHTML = '';
 
+  const minRuntime = parseInt(document.getElementById('minRuntime').value, 10);
+  const maxRuntime = parseInt(document.getElementById('maxRuntime').value, 10);
+
   moviesData.forEach(m => {
     const hasProvider = selectedProviders.length === 0 || 
       m.providers.some(p => selectedProviders.includes(p.provider_id));
 
-    if (hasProvider) {
+    // Filtro por duracion
+    const matchRuntime = m.runtime >= minRuntime && (maxRuntime === 240 || m.runtime <= maxRuntime);
+
+    if (hasProvider && matchRuntime) {
       const card = document.createElement('div');
       card.className = 'movie-card';
 
@@ -218,6 +248,7 @@ function renderMovies() {
         <img class="poster" src="${TMDB_IMAGE_BASE}${m.poster_path}" alt="${m.title}">
         <div class="movie-info">
           <h4>${m.title}</h4>
+          <p><small>${m.runtime ? m.runtime + ' min' : 'S/D'}</small></p>
           <div class="providers-list">${providersHtml}</div>
         </div>
       `;

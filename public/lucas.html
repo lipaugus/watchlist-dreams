@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diario de Lucas</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -9,27 +10,38 @@
   <header>
     <nav>
       <a href="index.html">Watchlist</a>
-      <a href="lucas.html">Diario de Lucas</a>
-      <a href="releases.html">Proximos Estrenos</a>
+      <a href="lucas.html" class="active">Diario de Lucas</a>
+      <a href="releases.html">Próximos Estrenos</a>
     </nav>
-    <h1>Peliculas Vistas por Lucas</h1>
+    <h1>Películas Vistas por Lucas</h1>
   </header>
 
   <div class="controls">
     <button id="loadLucasBtn">Cargar Diario</button>
 
-    <div style="margin-top: 10px;">
-      <label>Genero:</label>
-      <select id="genreFilter"><option value="">Todos</option></select>
+    <div class="filter-row">
+      <label>Género:</label>
+      <select id="genreFilter"><option value="">Todos los géneros</option></select>
 
-      <label>Decada:</label>
-      <select id="decadeFilter"><option value="">Todas</option></select>
+      <label>Década:</label>
+      <select id="decadeFilter"><option value="">Todas las décadas</option></select>
 
       <label>Ordenar por:</label>
       <select id="sortFilter">
         <option value="rating_desc">Calificación de Lucas (Mayor a menor)</option>
         <option value="tmdb_desc">Popularidad TMDB</option>
       </select>
+    </div>
+
+    <div class="filter-row">
+      <div class="runtime-filter-group">
+        <label>Duración (minutos):</label>
+        <div class="runtime-inputs">
+          <input type="range" id="minRuntime" min="0" max="240" value="0" step="5">
+          <input type="range" id="maxRuntime" min="0" max="240" value="240" step="5">
+        </div>
+        <span id="runtimeDisplay" class="runtime-value">0 min - 240+ min</span>
+      </div>
     </div>
 
     <h3>Servicios de Streaming</h3>

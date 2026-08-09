@@ -2,26 +2,40 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Letterboxd Watchlist & Streaming</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header>
     <nav>
-      <a href="index.html">Watchlist</a>
+      <a href="index.html" class="active">Watchlist</a>
       <a href="lucas.html">Diario de Lucas</a>
-      <a href="releases.html">Proximos Estrenos</a>
+      <a href="releases.html">Próximos Estrenos</a>
     </nav>
     <h1>Mi Watchlist y Streaming</h1>
   </header>
 
   <div class="controls">
-    <label for="usernameInput">Usuario Letterboxd:</label>
-    <input type="text" id="usernameInput" placeholder="Ej: tu_usuario">
-    <button id="loadBtn">Cargar Watchlist</button>
-    <button id="refreshBtn">Forzar Actualizacion</button>
+    <div class="input-group">
+      <label for="usernameInput">Usuario Letterboxd:</label>
+      <input type="text" id="usernameInput" placeholder="Ej: tu_usuario">
+      <button id="loadBtn">Cargar Watchlist</button>
+      <button id="refreshBtn">Forzar Actualización</button>
+    </div>
 
-    <h3>Filtrar por Servicios de Streaming (Argentina)</h3>
+    <div class="filter-row">
+      <div class="runtime-filter-group">
+        <label>Duración (minutos):</label>
+        <div class="runtime-inputs">
+          <input type="range" id="minRuntime" min="0" max="240" value="0" step="5">
+          <input type="range" id="maxRuntime" min="0" max="240" value="240" step="5">
+        </div>
+        <span id="runtimeDisplay" class="runtime-value">0 min - 240+ min</span>
+      </div>
+    </div>
+
+    <h3>Filtrar por Servicios de Streaming</h3>
     <div id="streamingFilters" class="streaming-filters"></div>
   </div>
 

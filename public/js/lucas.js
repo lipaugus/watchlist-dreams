@@ -7,7 +7,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('genreFilter').addEventListener('change', renderMovies);
   document.getElementById('decadeFilter').addEventListener('change', renderMovies);
   document.getElementById('sortFilter').addEventListener('change', renderMovies);
+
+  const minSlider = document.getElementById('minRuntime');
+  const maxSlider = document.getElementById('maxRuntime');
+  minSlider.addEventListener('input', handleRuntimeChange);
+  maxSlider.addEventListener('input', handleRuntimeChange);
 });
+
+function handleRuntimeChange() {
+  const minSlider = document.getElementById('minRuntime');
+  const maxSlider = document.getElementById('maxRuntime');
+  
+  let minVal = parseInt(minSlider.value, 10);
+  let maxVal = parseInt(maxSlider.value, 10);
+
+  if (minVal > maxVal) {
+    minVal = maxVal;
+    minSlider.value = minVal;
+  }
+
+  const maxLabel = maxVal === 240 ? '240+ min' : `${maxVal} min`;
+  document.getElementById('runtimeDisplay').innerText = `${minVal} min - ${maxLabel}`;
+  renderMovies();
+}
 
 async function loadLucasData() {
   document.getElementById('statusMessage').innerText = 'Cargando diario de Lucas desde CSV...';
@@ -17,33 +39,47 @@ async function loadLucasData() {
     const entries = diaryData.diary || [];
 
     const moviesMap = new Map();
+    // Procesamiento optimizado en lotes de 5 para movil
+    const chunkSize = 5;
 
-    for (const entry of entries) {
-      if (moviesMap.has(entry.tmdb_id)) continue;
+    for (let i = 0; i < entries.length; i += chunkSize) {
+      const chunk = entries.slice(i, i + chunkSize);
+      document.getElementById('statusMessage').innerText = `Obteniendo datos de TMDB (${i + 1} de ${entries.length})...`;
 
-      const [detailsRes, provRes] = await Promise.all([
-        fetch(`/api/tmdb?endpoint=details&tmdb_id=${entry.tmdb_id}`),
-        fetch(`/api/tmdb?endpoint=providers&tmdb_id=${entry.tmdb_id}`)
-      ]);
+      await Promise.all(
+        chunk.map(async (entry) => {
+          if (moviesMap.has(entry.tmdb_id)) return;
 
-      if (!detailsRes.ok || !provRes.ok) continue;
+          try {
+            const [detailsRes, provRes] = await Promise.all([
+              fetch(`/api/tmdb?endpoint=details&tmdb_id=${entry.tmdb_id}`),
+              fetch(`/api/tmdb?endpoint=providers&tmdb_id=${entry.tmdb_id}`)
+            ]);
 
-      const details = await detailsRes.json();
-      const provData = await provRes.json();
+            if (!detailsRes.ok || !provRes.ok) return;
 
-      const arProviders = provData.results && provData.results.AR && provData.results.AR.flatrate
-        ? provData.results.AR.flatrate
-        : [];
+            const details = await detailsRes.json();
+            const provData = await provRes.json();
 
-      moviesMap.set(entry.tmdb_id, {
-        title: details.title,
-        poster_path: details.poster_path,
-        lucas_rating: entry.rating,
-        popularity: details.popularity,
-        release_date: details.release_date,
-        genres: details.genres || [],
-        providers: arProviders
-      });
+            const arProviders = provData.results && provData.results.AR && provData.results.AR.flatrate
+              ? provData.results.AR.flatrate
+              : [];
+
+            moviesMap.set(entry.tmdb_id, {
+              title: details.title,
+              poster_path: details.poster_path,
+              runtime: details.runtime || 0,
+              lucas_rating: entry.rating,
+              popularity: details.popularity,
+              release_date: details.release_date,
+              genres: details.genres || [],
+              providers: arProviders
+            });
+          } catch (e) {
+            // Continuar si falla un elemento puntual
+          }
+        })
+      );
     }
 
     lucasMovies = Array.from(moviesMap.values());
@@ -130,6 +166,8 @@ function renderMovies() {
   const genreVal = document.getElementById('genreFilter').value;
   const decadeVal = document.getElementById('decadeFilter').value;
   const sortVal = document.getElementById('sortFilter').value;
+  const minRuntime = parseInt(document.getElementById('minRuntime').value, 10);
+  const maxRuntime = parseInt(document.getElementById('maxRuntime').value, 10);
 
   let filtered = lucasMovies.filter(m => {
     const matchGenre = !genreVal || m.genres.some(g => g.id === parseInt(genreVal, 10));
@@ -143,7 +181,9 @@ function renderMovies() {
     const matchProvider = selectedProviders.length === 0 || 
       m.providers.some(p => selectedProviders.includes(p.provider_id));
 
-    return matchGenre && matchDecade && matchProvider;
+    const matchRuntime = m.runtime >= minRuntime && (maxRuntime === 240 || m.runtime <= maxRuntime);
+
+    return matchGenre && matchDecade && matchProvider && matchRuntime;
   });
 
   if (sortVal === 'rating_desc') {
@@ -163,6 +203,7 @@ function renderMovies() {
       <div class="movie-info">
         <h4>${m.title}</h4>
         <p>Lucas: ${ratingText}</p>
+        <p><small>${m.runtime ? m.runtime + ' min' : 'S/D'}</small></p>
       </div>
     `;
     grid.appendChild(card);

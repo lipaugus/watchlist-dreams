@@ -6,14 +6,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedUsername = localStorage.getItem('lboxd_username');
   if (savedUsername) {
     document.getElementById('usernameInput').value = savedUsername;
-    const savedData = localStorage.getItem(`watchlist_data_${savedUsername}`);
+    const cacheKey = `watchlist_data_${savedUsername}`;
+    const savedData = localStorage.getItem(cacheKey);
+    
     if (savedData) {
       try {
-        moviesData = JSON.parse(savedData);
-        renderProvidersFilter();
-        renderMovies();
+        const parsed = JSON.parse(savedData);
+        // Si los datos guardados son de la version anterior (sin runtime), limpiamos cache
+        if (parsed.length > 0 && parsed[0].runtime === undefined) {
+          localStorage.removeItem(cacheKey);
+        } else {
+          moviesData = parsed;
+          renderProvidersFilter();
+          renderMovies();
+        }
       } catch (e) {
-        localStorage.removeItem(`watchlist_data_${savedUsername}`);
+        localStorage.removeItem(cacheKey);
       }
     }
   }
@@ -21,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loadBtn').addEventListener('click', () => processWatchlist(false));
   document.getElementById('refreshBtn').addEventListener('click', () => processWatchlist(true));
 
-  // Eventos de sliders de duracion
   const minSlider = document.getElementById('minRuntime');
   const maxSlider = document.getElementById('maxRuntime');
   minSlider.addEventListener('input', handleRuntimeChange);
@@ -66,10 +73,17 @@ async function processWatchlist(forceRefresh) {
   if (!forceRefresh) {
     const savedData = localStorage.getItem(cacheKey);
     if (savedData) {
-      moviesData = JSON.parse(savedData);
-      renderProvidersFilter();
-      renderMovies();
-      return;
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.length > 0 && parsed[0].runtime !== undefined) {
+          moviesData = parsed;
+          renderProvidersFilter();
+          renderMovies();
+          return;
+        }
+      } catch (e) {
+        localStorage.removeItem(cacheKey);
+      }
     }
   }
 
@@ -91,7 +105,6 @@ async function processWatchlist(forceRefresh) {
     const missingSlugs = slugs.filter(slug => !localMappings[slug]);
 
     if (missingSlugs.length > 0) {
-      // Lote reducido a 5 para optimizar red movil
       const batchSize = 5;
       for (let i = 0; i < missingSlugs.length; i += batchSize) {
         const batch = missingSlugs.slice(i, i + batchSize);
@@ -125,7 +138,6 @@ async function processWatchlist(forceRefresh) {
     updateStatus('Cargando detalles de TMDB y streaming...');
     
     const fetchedMoviesMap = new Map();
-    // Lote de 5 concurrentes para evitar saturar conexiones moviles
     const tmdbBatchSize = 5;
 
     for (let i = 0; i < mappedItems.length; i += tmdbBatchSize) {
@@ -156,7 +168,7 @@ async function processWatchlist(forceRefresh) {
               tmdb_id: item.tmdb_id,
               title: details.title,
               poster_path: details.poster_path,
-              runtime: details.runtime || 0,
+              runtime: typeof details.runtime === 'number' ? details.runtime : 0,
               genres: details.genres || [],
               providers: arProviders
             };
@@ -233,8 +245,9 @@ function renderMovies() {
     const hasProvider = selectedProviders.length === 0 || 
       m.providers.some(p => selectedProviders.includes(p.provider_id));
 
-    // Filtro por duracion
-    const matchRuntime = m.runtime >= minRuntime && (maxRuntime === 240 || m.runtime <= maxRuntime);
+    // Evaluacion segura del runtime frente a undefined/null
+    const runtimeVal = typeof m.runtime === 'number' ? m.runtime : 0;
+    const matchRuntime = runtimeVal >= minRuntime && (maxRuntime === 240 || runtimeVal <= maxRuntime);
 
     if (hasProvider && matchRuntime) {
       const card = document.createElement('div');
@@ -248,7 +261,7 @@ function renderMovies() {
         <img class="poster" src="${TMDB_IMAGE_BASE}${m.poster_path}" alt="${m.title}">
         <div class="movie-info">
           <h4>${m.title}</h4>
-          <p><small>${m.runtime ? m.runtime + ' min' : 'S/D'}</small></p>
+          <p><small>${runtimeVal ? runtimeVal + ' min' : 'S/D'}</small></p>
           <div class="providers-list">${providersHtml}</div>
         </div>
       `;

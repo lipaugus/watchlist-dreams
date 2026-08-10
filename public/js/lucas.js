@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleRuntimeChange() {
   const minSlider = document.getElementById('minRuntime');
   const maxSlider = document.getElementById('maxRuntime');
-  
+
   let minVal = parseInt(minSlider.value, 10);
   let maxVal = parseInt(maxSlider.value, 10);
 
@@ -94,7 +94,7 @@ async function loadLucasData() {
 function populateFilters() {
   const genreSelect = document.getElementById('genreFilter');
   const decadeSelect = document.getElementById('decadeFilter');
-  
+
   genreSelect.innerHTML = '<option value="">Todos los géneros</option>';
   decadeSelect.innerHTML = '<option value="">Todas las décadas</option>';
 
@@ -171,18 +171,18 @@ function renderMovies() {
 
   let filtered = lucasMovies.filter(m => {
     const matchGenre = !genreVal || m.genres.some(g => g.id === parseInt(genreVal, 10));
-    
+
     let matchDecade = true;
     if (decadeVal && m.release_date) {
       const year = parseInt(m.release_date.substring(0, 4), 10);
       matchDecade = Math.floor(year / 10) * 10 === parseInt(decadeVal, 10);
     }
 
-    const matchProvider = selectedProviders.length === 0 || 
+    const matchProvider = selectedProviders.length === 0 ||
       m.providers.some(p => selectedProviders.includes(p.provider_id));
+    const runtimeVal = typeof m.runtime === 'number' ? m.runtime : 0;
 
-    const matchRuntime = m.runtime >= minRuntime && (maxRuntime === 240 || m.runtime <= maxRuntime);
-
+    const matchRuntime = runtimeVal >= minRuntime && (maxRuntime === 240 || runtimeVal <= maxRuntime);
     return matchGenre && matchDecade && matchProvider && matchRuntime;
   });
 
